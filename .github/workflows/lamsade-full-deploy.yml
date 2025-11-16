@@ -3,11 +3,7 @@ name: Lamsade Build and Deploy Test
 on:
   push:
     branches:
-      - feature/ci-cd-integration
-  pull_request:
-    branches:
       - main
-      - master
   workflow_dispatch:
 
 jobs:
