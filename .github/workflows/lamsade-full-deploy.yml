@@ -362,14 +362,19 @@ jobs:
         retention-days: 7
 
   # ============================================================================
-  # JOB 6: Cluster Inspection (DISABLED FOR TESTING)
+  # JOB 6: Cluster Inspection
   # ============================================================================
   inspect-cluster:
     runs-on: ubuntu-latest
     needs: deploy
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.inspect_cluster == 'true'
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.inspect_cluster == 'true') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[inspect-cluster]'))
     
     steps:
+    - name: Debug dispatched inputs (inspect)
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "inspect_cluster=${{ github.event.inputs.inspect_cluster }}"
+        echo "run_job=${{ github.event.inputs.run_job }}"
     - name: Checkout code
       uses: actions/checkout@v4
 
