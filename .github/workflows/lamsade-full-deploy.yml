@@ -314,7 +314,7 @@ jobs:
   download-logs:
     runs-on: ubuntu-latest
     needs: run
-    if: false  # Disabled for testing compilation only
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_job == 'true'
     
     steps:
     - name: Setup SSH
@@ -326,6 +326,11 @@ jobs:
         chmod 600 ~/.ssh/id_lamsade
         ssh-keyscan -p 5022 ssh.lamsade.dauphine.fr >> ~/.ssh/known_hosts 2>/dev/null || true
 
+    - name: Wait for log generation
+      run: |
+        echo "⏳ Waiting 25s to allow Spark job to emit initial logs..."
+        sleep 25
+
     - name: Download latest logs
       env:
         CLUSTER_USER: ${{ secrets.LAMSADE_USER }}
@@ -334,7 +339,13 @@ jobs:
       run: |
         mkdir -p ./logs-from-cluster
         echo "📥 Downloading logs from cluster..."
-        scp -i ~/.ssh/id_lamsade -P $SSH_PORT $CLUSTER_USER@$CLUSTER_HOST:~/workspace/logs/latest.log ./logs-from-cluster/ || echo "No logs found"
+        scp -i ~/.ssh/id_lamsade -P $SSH_PORT $CLUSTER_USER@$CLUSTER_HOST:~/workspace/logs/latest.log ./logs-from-cluster/ 2>/dev/null || echo "No latest.log yet"
+        # Also fetch most recent timestamped log if exists
+        LATEST_TS=$(ssh -i ~/.ssh/id_lamsade -p $SSH_PORT $CLUSTER_USER@$CLUSTER_HOST "ls -1t ~/workspace/logs/flight-app-*.log 2>/dev/null | head -1") || true
+        if [ -n "$LATEST_TS" ]; then
+          scp -i ~/.ssh/id_lamsade -P $SSH_PORT $CLUSTER_USER@$CLUSTER_HOST:$LATEST_TS ./logs-from-cluster/ 2>/dev/null || true
+        fi
+        echo "✅ Download phase finished"
 
     - name: Upload logs as artifact
       uses: actions/upload-artifact@v4
