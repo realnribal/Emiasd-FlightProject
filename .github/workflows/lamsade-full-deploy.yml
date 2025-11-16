@@ -5,6 +5,21 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run_job:
+        description: "Exécuter le job Spark (run) sur le cluster"
+        required: false
+        type: boolean
+        default: false
+      inspect_cluster:
+        description: "Lancer le job d'inspection du cluster"
+        required: false
+        type: boolean
+        default: false
+      tasks:
+        description: "Liste des tâches pour l'application (séparées par des virgules)"
+        required: false
+        default: 'data-pipeline,feature-extraction,train'
 
 jobs:
   # ============================================================================
@@ -208,7 +223,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     needs: deploy
-    if: false  # Disabled for testing compilation only
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_job == 'true'
     
     steps:
     - name: Setup SSH
@@ -225,7 +240,7 @@ jobs:
         CLUSTER_USER: ${{ secrets.LAMSADE_USER }}
         CLUSTER_HOST: ssh.lamsade.dauphine.fr
         SSH_PORT: 5022
-        TASKS: ${{ github.event.inputs.tasks || 'data-pipeline,feature-extraction,train' }}
+        TASKS: ${{ github.event.inputs.tasks }}
       run: |
         echo "🚀 Launching Spark application with tasks: $TASKS"
         ssh -i ~/.ssh/id_lamsade -p $SSH_PORT $CLUSTER_USER@$CLUSTER_HOST << 'EOF'
@@ -335,7 +350,7 @@ jobs:
   inspect-cluster:
     runs-on: ubuntu-latest
     needs: deploy
-    if: false  # Disabled for testing compilation only
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.inspect_cluster == 'true'
     
     steps:
     - name: Checkout code
